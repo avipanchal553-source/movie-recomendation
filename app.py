@@ -426,13 +426,37 @@ elif st.session_state.view == "details":
     
 
 # Backdrop
-if data.get("backdrop_url"):
-    st.markdown("#### Backdrop")
-    st.image(
-        data["backdrop_url"],
-        use_container_width=True
-    )
+# HOME PAGE
+if st.session_state.view == "home":
 
+    # Search
+    # Trending movies
+    # Movie grid
+
+# DETAILS PAGE
+elif st.session_state.view == "details":
+
+    tmdb_id = st.session_state.selected_tmdb_id
+
+    data, err = api_get_json(f"/movie/id/{tmdb_id}")
+
+    if err or not data:
+        st.error("Could not load movie details")
+        st.stop()
+
+    # Poster
+    # Movie information
+    # Overview
+
+    # Backdrop - MUST REMAIN HERE
+    if data.get("backdrop_url"):
+        st.markdown("#### Backdrop")
+        st.image(
+            data["backdrop_url"],
+            use_container_width=True
+        )
+
+    # Recommendations
 
 
     st.divider()
