@@ -1,33 +1,47 @@
 import os
 import pickle
-from typing import Optional, List,Dict,Any,Tuple
+from typing import Optional, List, Dict, Any, Tuple
 
-import numpy as np 
-import pandas as pd 
-import httpx 
-from fastapi import FASTAPI,HTTPException,Query
-from fastapi.middleware.core import CORSMiddleware
+import numpy as np
+import pandas as pd
+import httpx
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
+
+# =========================
+# ENV
+# =========================
 load_dotenv()
-TMDB_API_KEY=os.getenv("TMDB_API_KEY")
+TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+
 TMDB_BASE = "https://api.themoviedb.org/3"
 TMDB_IMG_500 = "https://image.tmdb.org/t/p/w500"
 
 if not TMDB_API_KEY:
+    # Don't crash import-time in production if you prefer; but for you better fail early:
     raise RuntimeError("TMDB_API_KEY missing. Put it in .env as TMDB_API_KEY=xxxx")
 
-app=FASTAPI(title="MOVIE RECOMMENDATION API", version="1.0")
+
+# =========================
+# FASTAPI APP
+# =========================
+app = FastAPI(title="Movie Recommender API", version="3.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # for local streamlit
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
+# =========================
+# PICKLE GLOBALS
+# =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DF_PATH = os.path.join(BASE_DIR, "df.pkl")
@@ -42,6 +56,10 @@ tfidf_obj: Any = None
 
 TITLE_TO_IDX: Optional[Dict[str, int]] = None
 
+
+# =========================
+# MODELS
+# =========================
 class TMDBMovieCard(BaseModel):
     tmdb_id: int
     title: str
@@ -73,7 +91,9 @@ class SearchBundleResponse(BaseModel):
     genre_recommendations: List[TMDBMovieCard]
 
 
-
+# =========================
+# UTILS
+# =========================
 def _norm_title(t: str) -> str:
     return str(t).strip().lower()
 
@@ -162,7 +182,10 @@ async def tmdb_search_first(query: str) -> Optional[dict]:
     return results[0] if results else None
 
 
-    def build_title_to_idx_map(indices: Any) -> Dict[str, int]:
+# =========================
+# TF-IDF Helpers
+# =========================
+def build_title_to_idx_map(indices: Any) -> Dict[str, int]:
     """
     indices.pkl can be:
     - dict(title -> index)
@@ -176,7 +199,7 @@ async def tmdb_search_first(query: str) -> Optional[dict]:
             title_to_idx[_norm_title(k)] = int(v)
         return title_to_idx
 
-    
+    # pandas Series or similar mapping
     try:
         for k, v in indices.items():
             title_to_idx[_norm_title(k)] = int(v)
@@ -293,6 +316,7 @@ def health():
     return {"status": "ok"}
 
 
+# ---------- HOME FEED (TMDB) ----------
 @app.get("/home", response_model=List[TMDBMovieCard])
 async def home(
     category: str = Query("popular"),
@@ -321,7 +345,7 @@ async def home(
         raise HTTPException(status_code=500, detail=f"Home route failed: {e}")
 
 
--
+# ---------- TMDB KEYWORD SEARCH (MULTIPLE RESULTS) ----------
 @app.get("/tmdb/search")
 async def tmdb_search(
     query: str = Query(..., min_length=1),
@@ -450,4 +474,3 @@ async def search_bundle(
         tfidf_recommendations=tfidf_items,
         genre_recommendations=genre_recs,
     )
-
