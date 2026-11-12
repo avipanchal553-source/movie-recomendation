@@ -74,18 +74,28 @@ def api_get_json(path: str, params: dict | None = None):
         return None, f"Request failed: {e}"
 
 
+
 def poster_grid(cards, cols=6, key_prefix="grid"):
+    global GRID_RENDER_COUNTER
+
+    # Unique ID for every grid rendered on the page
+    GRID_RENDER_COUNTER += 1
+    grid_id = GRID_RENDER_COUNTER
+
     if not cards:
         st.info("No movies to show.")
         return
 
     rows = (len(cards) + cols - 1) // cols
     idx = 0
+
     for r in range(rows):
         colset = st.columns(cols)
+
         for c in range(cols):
             if idx >= len(cards):
                 break
+
             m = cards[idx]
             idx += 1
 
@@ -94,18 +104,26 @@ def poster_grid(cards, cols=6, key_prefix="grid"):
             poster = m.get("poster_url")
 
             with colset[c]:
+
                 if poster:
                     st.image(poster, use_container_width=True)
                 else:
                     st.write("🖼️ No poster")
 
-                if st.button("Open", key=f"{key_prefix}_{r}_{c}_{idx}_{tmdb_id}"):
+                # Unique button key
+                unique_key = (
+                    f"{key_prefix}_{grid_id}_{idx}_{tmdb_id}"
+                )
+
+                if st.button("Open", key=unique_key):
                     if tmdb_id:
                         goto_details(tmdb_id)
 
                 st.markdown(
-                    f"<div class='movie-title'>{title}</div>", unsafe_allow_html=True
+                    f"<div class='movie-title'>{title}</div>",
+                    unsafe_allow_html=True
                 )
+
 
 
 def to_cards_from_tfidf_items(tfidf_items):
