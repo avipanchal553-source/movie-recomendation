@@ -330,9 +330,15 @@ elif st.session_state.view == "details":
         st.write(data.get("overview") or "No overview available.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    if data.get("backdrop_url"):
-        st.markdown("#### Backdrop")
-        st.image(movie_poster, use_container_width=True)
+    
+# Backdrop
+if data.get("backdrop_url"):
+    st.markdown("#### Backdrop")
+    st.image(
+        data["backdrop_url"],
+        use_container_width=True
+    )
+
 
     st.divider()
     st.markdown("### ✅ Recommendations")
