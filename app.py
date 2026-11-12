@@ -278,11 +278,14 @@ if st.session_state.view == "home":
 
     poster_grid(home_cards, cols=grid_cols, key_prefix="home_feed")
 
+
 # ==========================================================
 # VIEW: DETAILS
 # ==========================================================
 elif st.session_state.view == "details":
+
     tmdb_id = st.session_state.selected_tmdb_id
+
     if not tmdb_id:
         st.warning("No movie selected.")
         if st.button("← Back to Home"):
@@ -291,46 +294,119 @@ elif st.session_state.view == "details":
 
     # Top bar
     a, b = st.columns([3, 1])
+
     with a:
         st.markdown("### 📄 Movie Details")
+
     with b:
         if st.button("← Back to Home"):
             goto_home()
 
-    # Details (your FastAPI safe route)
+    # Fetch movie details
     data, err = api_get_json(f"/movie/id/{tmdb_id}")
+
     if err or not data:
         st.error(f"Could not load details: {err or 'Unknown error'}")
         st.stop()
 
-    # Layout: Poster LEFT, Details RIGHT
+    # Poster and Details
     left, right = st.columns([1, 2.4], gap="large")
 
     with left:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
+
         if data.get("poster_url"):
             st.image(data["poster_url"], use_container_width=True)
         else:
             st.write("🖼️ No poster")
+
         st.markdown("</div>", unsafe_allow_html=True)
 
     with right:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown(f"## {data.get('title','')}")
+
+        st.markdown(f"## {data.get('title', '')}")
+
         release = data.get("release_date") or "-"
-        genres = ", ".join([g["name"] for g in data.get("genres", [])]) or "-"
-        st.markdown(
-            f"<div class='small-muted'>Release: {release}</div>", unsafe_allow_html=True
-        )
-        st.markdown(
-            f"<div class='small-muted'>Genres: {genres}</div>", unsafe_allow_html=True
-        )
+        genres = ", ".join(
+            [g["name"] for g in data.get("genres", [])]
+        ) or "-"
+
+        st.markdown(f"Release: {release}")
+        st.markdown(f"Genres: {genres}")
+
         st.markdown("---")
         st.markdown("### Overview")
         st.write(data.get("overview") or "No overview available.")
+
         st.markdown("</div>", unsafe_allow_html=True)
 
+    # BACKDROP
+    if data.get("backdrop_url"):
+        st.markdown("#### Backdrop")
+        st.image(
+            data["backdrop_url"],
+            use_container_width=True
+        )
+
+    st.divider()
+    st.markdown("### ✅ Recommendations")
+
+    # Recommendations
+    title = (data.get("title") or "").strip()
+
+    if title:
+        bundle, err2 = api_get_json(
+            "/movie/search",
+            params={
+                "query": title,
+                "tfidf_top_n": 12,
+                "genre_limit": 12
+            }
+        )
+
+        if not err2 and bundle:
+            st.markdown("#### 🔎 Similar Movies (TF-IDF)")
+
+            poster_grid(
+                to_cards_from_tfidf_items(
+                    bundle.get("tfidf_recommendations")
+                ),
+                cols=grid_cols,
+                key_prefix="details_tfidf"
+            )
+
+            st.markdown("#### 🎭 More Like This (Genre)")
+
+            poster_grid(
+                bundle.get("genre_recommendations", []),
+                cols=grid_cols,
+                key_prefix="details_genre"
+            )
+
+        else:
+            st.info("Showing Genre recommendations (fallback).")
+
+            genre_only, err3 = api_get_json(
+                "/recommend/genre",
+                params={"tmdb_id": tmdb_id, "limit": 18}
+            )
+
+            if not err3 and genre_only:
+                poster_grid(
+                    genre_only,
+                    cols=grid_cols,
+                    key_prefix="details_genre_fallback"
+                )
+            else:
+                st.warning("No recommendations available right now.")
+
+    else:
+        st.warning("No title available to compute recommendations.")
+
+
     
+
 # Backdrop
 if data.get("backdrop_url"):
     st.markdown("#### Backdrop")
@@ -338,6 +414,7 @@ if data.get("backdrop_url"):
         data["backdrop_url"],
         use_container_width=True
     )
+
 
 
     st.divider()
