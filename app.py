@@ -73,7 +73,7 @@ def api_get_json(path: str, params: dict | None = None):
     except Exception as e:
         return None, f"Request failed: {e}"
 
-
+GRID_RENDER_COUNTER = 0
 
 def poster_grid(cards, cols=6, key_prefix="grid"):
     global GRID_RENDER_COUNTER
